@@ -193,7 +193,9 @@ class SliceR1Test : public ClientLibraryTestBase,
  protected:
   template <typename NativeT>
   void Run(const R1Spec& spec) {
-    std::vector<NativeT> input(spec.input_dim0);
+    // This can't be an std::vector, since you can't grab an ArraySlice of a
+    // vector<bool>.
+    tensorflow::gtl::InlinedVector<NativeT, 1> input(spec.input_dim0);
     std::iota(input.begin(), input.end(), NativeT());
 
     ComputationBuilder builder(client_, TestName());
@@ -201,7 +203,8 @@ class SliceR1Test : public ClientLibraryTestBase,
     builder.Slice(original, {spec.slice_start}, {spec.slice_limit},
                   {spec.slice_stride});
 
-    std::vector<NativeT> expected;
+    // Ditto.
+    tensorflow::gtl::InlinedVector<NativeT, 1> expected;
     for (int i = spec.slice_start; i < spec.slice_limit;
          i += spec.slice_stride) {
       expected.push_back(i);
@@ -210,6 +213,9 @@ class SliceR1Test : public ClientLibraryTestBase,
     ComputeAndCompareR1<NativeT>(&builder, expected, {});
   }
 };
+
+// A version of SliceR1Test used to label and disable 'large' tests
+class SliceR1LargeTest : public SliceR1Test {};
 
 string SliceR1TestDataToString(const ::testing::TestParamInfo<R1Spec>& data) {
   const R1Spec& spec = data.param;
@@ -229,6 +235,21 @@ XLA_TEST_P(SliceR1Test, DoIt_S32) { Run<int32>(GetParam()); }
 XLA_TEST_P(SliceR1Test, DoIt_U64) { Run<uint64>(GetParam()); }
 
 XLA_TEST_P(SliceR1Test, DoIt_S64) { Run<int64>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_F32) { Run<float>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_F64) { Run<double>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_U32) { Run<uint32>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_S32) { Run<int32>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_U64) { Run<uint64>(GetParam()); }
+
+XLA_TEST_P(SliceR1LargeTest, DoIt_S64) { Run<int64>(GetParam()); }
+
+XLA_TEST_P(SliceR1Test, DoIt_PRED) { Run<bool>(GetParam()); }
+
 
 // Tests for R1 slice ops.
 // The format for each testcase is {input size, start, limit, stride}.
@@ -267,13 +288,29 @@ INSTANTIATE_TEST_CASE_P(
         R1Spec{64 * 1024, 1024 + 1, 63 * 1024 - 1, 1},
         R1Spec{64 * 1024, 32 * 1024, 33 * 1024, 1},
         R1Spec{64 * 1024, 32 * 1024 + 1, 33 * 1024 - 1, 1},
-        R1Spec{64 * 1024, 32 * 1024 - 17, 36 * 1024 - 18, 1},
+        R1Spec{64 * 1024, 32 * 1024 - 17, 36 * 1024 - 18, 1}
+    ),
+    SliceR1TestDataToString
+);
+
 // TODO(b/69425338): This uses too much memory on GPU.
 #ifndef XLA_TEST_BACKEND_GPU
-        R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024, 12 * 1024 * 1024, 1},
-        R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024 + 1, 12 * 1024 * 1024 - 1, 1},
-        R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024 - 1, 12 * 1024 * 1024 + 1, 1},
+INSTANTIATE_TEST_CASE_P(
+    SliceR1TestBigSlicesInstantiation,
+    SliceR1LargeTest,
+    ::testing::Values(
+          R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024, 12 * 1024 * 1024, 1},
+          R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024 + 1, 12 * 1024 * 1024 - 1, 1},
+          R1Spec{16 * 1024 * 1024, 4 * 1024 * 1024 - 1, 12 * 1024 * 1024 + 1, 1}
+    ),
+    SliceR1TestDataToString
+);
 #endif
+
+INSTANTIATE_TEST_CASE_P(
+    SliceStridedR1TestInstantiation,
+    SliceR1Test,
+    ::testing::Values(
         R1Spec{10, 2, 4, 2},
         R1Spec{10, 0, 10, 2},
         R1Spec{10, 0, 10, 3},
@@ -285,8 +322,24 @@ INSTANTIATE_TEST_CASE_P(
         R1Spec{2047, 1024 - 24, 1024 + 160, 31},
         R1Spec{2047, 1, 2046, 3 * 128},
         R1Spec{4096, 1024 + 3, 4095, 500},
-        R1Spec{8192, 0, 8192, 1024 * 3 + 400}
-        ),
+        R1Spec{8192, 0, 8192, 1024 * 3 + 400},
+        R1Spec{1024 * 1024, 0, 1024 * 1024, 2},
+        R1Spec{1024 * 1024, 0, 1024 * 1024, 8},
+        R1Spec{1024 * 1024, 0, 1024 * 1024, 7},
+        R1Spec{1024 * 1024, 0, 1024 * 1024, 125},
+        R1Spec{1024 * 1024, 3, 1024 - 9, 2},
+        R1Spec{1024 * 1024, 3, 1024 - 9, 8},
+        R1Spec{1024 * 1024, 3, 1024 - 9, 7},
+        R1Spec{1024 * 1024, 3, 1024 - 9, 125},
+        R1Spec{1024 * 1024, 3, 1024 * 512 - 9, 2},
+        R1Spec{1024 * 1024, 3, 1024 * 512 - 9, 8},
+        R1Spec{1024 * 1024, 3, 1024 * 512 - 9, 7},
+        R1Spec{1024 * 1024, 3, 1024 * 512 - 9, 125},
+        R1Spec{1024 * 1024 + 71, 3, 1024 * 512 - 9, 2},
+        R1Spec{1024 * 1024 + 71, 3, 1024 * 512 - 9, 8},
+        R1Spec{1024 * 1024 + 71, 3, 1024 * 512 - 9, 7},
+        R1Spec{1024 * 1024 + 71, 3, 1024 * 512 - 9, 125}
+    ),
     SliceR1TestDataToString
 );
 // clang-format on

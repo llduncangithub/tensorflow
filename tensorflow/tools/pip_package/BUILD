@@ -11,6 +11,7 @@ load(
 )
 load("//third_party/mkl:build_defs.bzl", "if_mkl")
 load("//tensorflow:tensorflow.bzl", "if_cuda")
+load("@local_config_tensorrt//:build_defs.bzl", "if_tensorrt")
 load("//tensorflow/core:platform/default/build_config_root.bzl", "tf_additional_license_deps")
 
 # This returns a list of headers of all public header libraries (e.g.,
@@ -107,10 +108,12 @@ filegroup(
         "@highwayhash//:LICENSE",
         "@jemalloc//:COPYING",
         "@jpeg//:LICENSE.md",
+        "@kafka//:LICENSE",
         "@libxsmm_archive//:LICENSE",
         "@lmdb//:LICENSE",
         "@local_config_sycl//sycl:LICENSE.text",
         "@grpc//third_party/nanopb:LICENSE.txt",
+        "@grpc//third_party/address_sorting:LICENSE",
         "@nasm//:LICENSE",
         "@nsync//:LICENSE",
         "@pcre//:LICENCE",
@@ -124,7 +127,6 @@ filegroup(
         "@org_python_pypi_backports_weakref//:LICENSE",
     ] + if_mkl([
         "//third_party/mkl:LICENSE",
-        "@mkl//:LICENSE",
     ]) + if_not_windows([
         "@nccl_archive//:LICENSE.txt",
     ]) + tf_additional_license_deps(),
@@ -147,25 +149,27 @@ sh_binary(
             "//tensorflow/contrib/boosted_trees:boosted_trees_pip",
             "//tensorflow/contrib/cluster_resolver:cluster_resolver_pip",
             "//tensorflow/contrib/data/python/kernel_tests:dataset_serialization_test",
-            "//tensorflow/contrib/data/python/ops:prefetching_py",
+            "//tensorflow/contrib/data/python/ops:contrib_op_loader",
             "//tensorflow/contrib/eager/python/examples:examples_pip",
-            "//tensorflow/contrib/eager/python:checkpointable",
+            "//tensorflow/contrib/eager/python:checkpointable_utils",
             "//tensorflow/contrib/eager/python:evaluator",
             "//tensorflow/contrib/gan:gan",
             "//tensorflow/contrib/graph_editor:graph_editor_pip",
             "//tensorflow/contrib/keras:keras",
             "//tensorflow/contrib/labeled_tensor:labeled_tensor_pip",
+            "//tensorflow/contrib/lite/python:interpreter_test_data",
+            "//tensorflow/contrib/lite/python:tf_lite_py_pip",
             "//tensorflow/contrib/lite/toco:toco",
             "//tensorflow/contrib/lite/toco/python:toco_wrapper",
             "//tensorflow/contrib/lite/toco/python:toco_from_protos",
             "//tensorflow/contrib/nn:nn_py",
             "//tensorflow/contrib/predictor:predictor_pip",
-            "//tensorflow/contrib/py2tf:py2tf",
-            "//tensorflow/contrib/py2tf/converters:converters",
-            "//tensorflow/contrib/py2tf/converters:test_lib",
-            "//tensorflow/contrib/py2tf/impl:impl",
-            "//tensorflow/contrib/py2tf/pyct:pyct",
-            "//tensorflow/contrib/py2tf/pyct/static_analysis:static_analysis",
+            "//tensorflow/contrib/autograph:autograph",
+            "//tensorflow/contrib/autograph/converters:converters",
+            "//tensorflow/contrib/autograph/converters:test_lib",
+            "//tensorflow/contrib/autograph/impl:impl",
+            "//tensorflow/contrib/autograph/pyct:pyct",
+            "//tensorflow/contrib/autograph/pyct/static_analysis:static_analysis",
             "//tensorflow/contrib/receptive_field:receptive_field_pip",
             "//tensorflow/contrib/session_bundle:session_bundle_pip",
             "//tensorflow/contrib/signal:signal_py",
@@ -186,12 +190,15 @@ sh_binary(
             "//tensorflow/python:util_example_parser_configuration",
             "//tensorflow/python/debug:debug_pip",
             "//tensorflow/python/eager:eager_pip",
+            "//tensorflow/python/kernel_tests/testdata:self_adjoint_eig_op_test_files",
             "//tensorflow/python/saved_model:saved_model",
             "//tensorflow/python/tools:tools_pip",
             "//tensorflow/python:test_ops",
             "//tensorflow/tools/dist_test/server:grpc_tensorflow_server",
         ],
-    }) + if_mkl(["//third_party/mkl:intel_binary_blob"]),
+    }) + if_mkl(["//third_party/mkl:intel_binary_blob"]) + if_tensorrt([
+        "//tensorflow/contrib/tensorrt:init_py",
+    ]),
 )
 
 # A genrule for generating a marker file for the pip package on Windows

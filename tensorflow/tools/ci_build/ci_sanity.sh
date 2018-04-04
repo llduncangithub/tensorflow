@@ -186,7 +186,8 @@ do_pylint() {
   # C0301 line-too-long
   # C0326 bad-whitespace
   # W0611 unused-import
-  grep -E '(\[E|\[W0311|\[W0312|\[C0330|\[C0301|\[C0326|\[W0611)' ${OUTPUT_FILE} > ${ERRORS_FILE}
+  # W0622 redefined-builtin
+  grep -E '(\[E|\[W0311|\[W0312|\[C0330|\[C0301|\[C0326|\[W0611|\[W0622)' ${OUTPUT_FILE} > ${ERRORS_FILE}
 
   N_ERRORS=0
   while read -r LINE; do
@@ -430,7 +431,8 @@ cmd_status(){
 # out by default in TF WORKSPACE file.
 do_bazel_nobuild() {
   BUILD_TARGET="//tensorflow/..."
-  BUILD_TARGET="${BUILD_TARGET} -//tensorflow/contrib/lite/java/demo/app/src/main/..."
+  BUILD_TARGET="${BUILD_TARGET} -//tensorflow/contrib/lite/java/demo/app/..."
+  BUILD_TARGET="${BUILD_TARGET} -//tensorflow/contrib/lite/examples/android/..."
   BUILD_TARGET="${BUILD_TARGET} -//tensorflow/contrib/lite/schema/..."
   BUILD_CMD="bazel build --nobuild ${BAZEL_FLAGS} -- ${BUILD_TARGET}"
 
